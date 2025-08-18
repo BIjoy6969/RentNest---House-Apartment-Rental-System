@@ -1,30 +1,20 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import PropertyList from "./components/PropertyList";
-import PropertyDetails from './pages/PropertyDetails';
-import AddProperty from './pages/AddProperty';
-import EditProperty from './pages/EditProperty';
-import Register from './pages/Register';
-import Login from './pages/Login';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import RentalApplicationPage from "./pages/RentalApplicationPage";
+import EditPropertyPage from "./pages/EditPropertyPage";
 
 function App() {
   return (
     <Router>
-      <nav className="navbar">
-        <Link to="/">RentNest</Link>
-        <div className="nav-right">
-          <Link to="/add">Add Property</Link>
-          <Link to="/register">Register</Link>
-          <Link to="/login">Login</Link>
-        </div>
-      </nav>
-
       <Routes>
-        <Route path="/" element={<PropertyList />} />
-        <Route path="/property/:id" element={<PropertyDetails />} />
-        <Route path="/add" element={<AddProperty />} />
-        <Route path="/edit/:id" element={<EditProperty />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/rental-application/:propertyId" element={<RentalApplicationPage />} />
+        <Route path="/edit-property/:propertyId" element={<EditPropertyPage />} />
       </Routes>
     </Router>
   );

@@ -1,72 +1,55 @@
-const Property = require('../models/Property');
+import Property from "../models/Property.js";
 
-// GET /api/properties
-exports.getAll = async (req, res) => {
+// Get all properties
+export const getProperties = async (req, res) => {
   try {
-    const { location, minRent, maxRent } = req.query;
-    const filter = {};
-
-    if (location) filter.location = { $regex: location, $options: 'i' };
-    if (minRent || maxRent) {
-      filter.rent = {};
-      if (minRent) filter.rent.$gte = Number(minRent);
-      if (maxRent) filter.rent.$lte = Number(maxRent);
-    }
-
-    const properties = await Property.find(filter).sort({ createdAt: -1 });
+    const properties = await Property.find();
     res.json(properties);
-  } catch (err) {
-    console.error('getAll error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// GET /api/properties/:id
-exports.getById = async (req, res) => {
+// Get property by ID
+export const getPropertyById = async (req, res) => {
   try {
-    const prop = await Property.findById(req.params.id);
-    if (!prop) return res.status(404).json({ message: 'Property not found' });
-    res.json(prop);
-  } catch (err) {
-    console.error('getById error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ message: "Property not found" });
+    res.json(property);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// POST /api/properties
-exports.create = async (req, res) => {
+// Create new property
+export const createProperty = async (req, res) => {
   try {
-    const { title, location, rent, bedrooms, description, image, landlordId } = req.body;
-    const created = await Property.create({
-      title, location, rent, bedrooms, description, image, landlordId: landlordId || null
-    });
-    res.status(201).json(created);
-  } catch (err) {
-    console.error('create error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    const newProperty = new Property(req.body);
+    const savedProperty = await newProperty.save();
+    res.status(201).json(savedProperty);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
 
-// PUT /api/properties/:id
-exports.update = async (req, res) => {
+// Update existing property
+export const updateProperty = async (req, res) => {
   try {
-    const updated = await Property.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: 'Property not found' });
-    res.json(updated);
-  } catch (err) {
-    console.error('update error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    const updatedProperty = await Property.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedProperty) return res.status(404).json({ message: "Property not found" });
+    res.json(updatedProperty);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
 
-// DELETE /api/properties/:id
-exports.remove = async (req, res) => {
+// Delete a property
+export const deleteProperty = async (req, res) => {
   try {
-    const deleted = await Property.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: 'Property not found' });
-    res.json({ message: 'Property deleted' });
-  } catch (err) {
-    console.error('delete error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    const deletedProperty = await Property.findByIdAndDelete(req.params.id);
+    if (!deletedProperty) return res.status(404).json({ message: "Property not found" });
+    res.json({ message: "Property deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

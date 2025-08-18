@@ -1,39 +1,53 @@
-import { useState } from 'react';
-import { registerUser } from '../services/authService';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../services/authService";
 
 export default function Register() {
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "tenant" });
+  const [showPass, setShowPass] = useState(false);
+  const [err, setErr] = useState("");
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'tenant' });
-  const [msg, setMsg] = useState('');
+
+  const ch = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
+    setErr("");
     try {
-      const data = await registerUser(form);
-      setMsg(data.message || 'Registered');
-      // store a lightweight session
-      localStorage.setItem('rn_user', JSON.stringify(data));
-      navigate('/');
-    } catch (err) {
-      setMsg(err.response?.data?.message || 'Error');
+      await registerUser(form);
+      navigate("/login");
+    } catch (error) {
+      setErr(error.response?.data?.message || "Registration failed");
     }
   };
 
   return (
-    <div className="container">
+    <div className="container" onSubmit={submit}>
       <h2>Create Account</h2>
-      <form onSubmit={submit} className="form">
-        <input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} required />
-        <input type="email" placeholder="Email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} required />
-        <input type="password" placeholder="Password" value={form.password} onChange={e=>setForm({...form, password:e.target.value})} required />
-        <select value={form.role} onChange={e=>setForm({...form, role:e.target.value})}>
+      {err && <p style={{ color: "red" }}>{err}</p>}
+      <form autoComplete="off">
+        <input name="name" placeholder="Full Name" value={form.name} onChange={ch} required autoComplete="off" />
+        <input name="email" type="email" placeholder="Email" value={form.email} onChange={ch} required autoComplete="off" />
+        <div style={{ position: "relative" }}>
+          <input
+            type={showPass ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={ch}
+            required
+            autoComplete="new-password"
+          />
+          <span onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 10, top: 10, cursor: "pointer" }}>
+            {showPass ? "🙈" : "👁"}
+          </span>
+        </div>
+        <select name="role" value={form.role} onChange={ch}>
           <option value="tenant">Tenant</option>
           <option value="landlord">Landlord</option>
         </select>
         <button type="submit">Register</button>
       </form>
-      {msg && <p>{msg}</p>}
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import axios from 'axios';
-const API = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+import axios from "axios";
+const API = process.env.REACT_APP_API_BASE || "http://localhost:5000";
 
 export const registerUser = async (data) => {
   const res = await axios.post(`${API}/api/auth/register`, data);
