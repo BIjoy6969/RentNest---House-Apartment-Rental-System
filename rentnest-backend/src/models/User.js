@@ -2,12 +2,20 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ['tenant', 'landlord'], required: true }, // User role (tenant/landlord)
-});
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, minlength: 2 },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true, minlength: 6 },
+
+    // User role (supports tenant, landlord, admin for admin panel)
+    role: { type: String, enum: ['tenant', 'landlord', 'admin'], required: true, default: 'tenant' },
+
+    // Wishlist: tenant favorites
+    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Property' }],
+  },
+  { timestamps: true }
+);
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
@@ -16,9 +24,9 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function (password) {
-  return bcrypt.compare(password, this.password);
+// Compare password with hash
+userSchema.methods.comparePassword = function (plain) {
+  return bcrypt.compare(plain, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);
