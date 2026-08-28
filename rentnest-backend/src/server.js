@@ -1,20 +1,13 @@
 // src/server.js
 const express = require('express');
-const mongoose = require('mongoose');
+const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const adminRoutes = require('./routes/adminRoutes');  // Import the new admin routes
+const connectDB = require('./config/db');
 
 dotenv.config();
 
 const app = express();
-
-// Middleware
-app.use(express.json());
-app.use(cors({
-  origin: ['http://localhost:3000'],
-  credentials: false
-}));
 
 /* ---------- CORS ---------- */
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
@@ -22,11 +15,17 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .map(s => s.trim())
   .filter(Boolean);
 
-// Accept requests from allowed origins; allow tools like Postman (no Origin header)
 app.use(
   cors({
     origin(origin, cb) {
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes('*') ||
+        origin.endsWith('.vercel.app')
+      ) {
+        return cb(null, true);
+      }
       return cb(new Error(`CORS blocked: ${origin}`));
     },
     credentials: false, // we use Bearer tokens, not cookies
@@ -34,7 +33,23 @@ app.use(
 );
 
 /* ---------- Body parsing ---------- */
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+/* ---------- Static uploads ---------- */
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+/* ---------- Database connection middleware ---------- */
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Database connection error:', err);
+    res.status(500).json({ message: 'Database connection error' });
+  }
+});
 
 /* ---------- Health ---------- */
 app.get('/', (_req, res) => res.json({ ok: true, name: 'RentNest API' }));
@@ -47,7 +62,7 @@ app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/favorites', require('./routes/favoriteRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
- // Admin routes added
+
 /* ---------- 404 ---------- */
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });
@@ -56,35 +71,27 @@ app.use((req, res) => {
 /* ---------- Global error handler ---------- */
 app.use((err, _req, res, _next) => {
   console.error(err);
-  res.status(500).json({ message: 'Server error' });
+  res.status(500).json({ message: err.message || 'Server error' });
 });
 
-/* ---------- MongoDB ---------- */
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-if (!MONGO_URI) {
-  console.error('Missing MONGO_URI (or MONGODB_URI) in .env');
-  process.exit(1);
-}
-
-mongoose.set('strictQuery', false);
-
-/* ---------- Start after DB connects ---------- */
+/* ---------- Start server if run directly ---------- */
 const PORT = process.env.PORT || 5000;
 
-(async () => {
-  try {
-    await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-    console.log('MongoDB connected');
-    app.listen(PORT, () => {
-      console.log(`API running on http://localhost:${PORT}`);
+if (require.main === module || !process.env.VERCEL) {
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`API running on http://localhost:${PORT}`);
+      });
+    })
+    .catch((e) => {
+      console.error('Mongo connection error:', e);
     });
-  } catch (e) {
-    console.error('Mongo connection error:', e);
-    process.exit(1);
-  }
-})();
+}
 
 /* ---------- Safety for unhandled rejections ---------- */
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
+
+module.exports = app;

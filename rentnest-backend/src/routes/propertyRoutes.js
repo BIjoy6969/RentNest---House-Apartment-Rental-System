@@ -100,7 +100,7 @@ router.post('/create', auth, requireRole('landlord'), upload.single('image'), as
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null; // Handle image if uploaded
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : (req.body.imageUrl || null); // Handle image if uploaded or provided via URL
 
     const doc = await Property.create({
       owner: req.user.id,
