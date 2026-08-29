@@ -16,19 +16,20 @@ const auth = typeof authMod === 'function' ? authMod : authMod.auth;
  */
 router.get('/mine', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const populated = req.query.populated && req.query.populated !== '0';
     if (populated) {
-      const me = await User.findById(req.user.id)
+      const me = await User.findById(userId)
         .select('favorites')
         .populate({
           path: 'favorites',
           match: { isActive: true, isFlagged: { $ne: true } },
-          select: 'title city state country rent bedrooms bathrooms imageUrl images status propertyType createdAt',
+          select: 'title city state country rent bedrooms bathrooms imageUrl images status propertyType completenessScore verificationStatus costs rules createdAt',
           options: { sort: { createdAt: -1 } },
         });
       return res.json(me?.favorites || []);
     } else {
-      const me = await User.findById(req.user.id).select('favorites');
+      const me = await User.findById(userId).select('favorites');
       return res.json(me?.favorites || []);
     }
   } catch (e) {
@@ -43,6 +44,7 @@ router.get('/mine', auth, async (req, res) => {
  */
 router.post('/:propertyId', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const { propertyId } = req.params;
     if (!mongoose.isValidObjectId(propertyId)) {
       return res.status(400).json({ message: 'Invalid property id' });
@@ -53,16 +55,16 @@ router.post('/:propertyId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Property not available' });
     }
 
-    if (String(prop.owner) === String(req.user.id || req.user._id)) {
+    if (String(prop.owner) === String(userId)) {
       return res.status(400).json({ message: 'You cannot save your own property to wishlist' });
     }
 
     await User.updateOne(
-      { _id: req.user.id },
+      { _id: userId },
       { $addToSet: { favorites: prop._id } } // add only if not already present
     );
 
-    const me = await User.findById(req.user.id).select('favorites');
+    const me = await User.findById(userId).select('favorites');
     res.json({ ok: true, favorites: me?.favorites || [] });
   } catch (e) {
     console.error('POST /favorites/:propertyId error:', e);
@@ -76,17 +78,18 @@ router.post('/:propertyId', auth, async (req, res) => {
  */
 router.delete('/:propertyId', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const { propertyId } = req.params;
     if (!mongoose.isValidObjectId(propertyId)) {
       return res.status(400).json({ message: 'Invalid property id' });
     }
 
     await User.updateOne(
-      { _id: req.user.id },
+      { _id: userId },
       { $pull: { favorites: propertyId } }
     );
 
-    const me = await User.findById(req.user.id).select('favorites');
+    const me = await User.findById(userId).select('favorites');
     res.json({ ok: true, favorites: me?.favorites || [] });
   } catch (e) {
     console.error('DELETE /favorites/:propertyId error:', e);

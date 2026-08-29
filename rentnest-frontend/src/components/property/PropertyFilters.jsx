@@ -164,18 +164,22 @@ export default function PropertyFilters({
 
         {/* Property Type */}
         <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">Property Type</label>
+          <label className="form-label">Property Category</label>
           <select
             className="form-select"
             value={propertyType}
             onChange={(e) => setPropertyType(e.target.value)}
           >
-            <option value="">All Property Types</option>
-            <option value="apartment">Apartment / Flat</option>
-            <option value="house">House / Duplex</option>
+            <option value="">All Categories</option>
+            <option value="apartment">Family Apartment / Flat</option>
+            <option value="bachelor">Bachelor Mess / Sublet</option>
+            <option value="family">Family House / Duplex</option>
+            <option value="student">Student Hostel / Room</option>
+            <option value="sublet">Sublet</option>
+            <option value="hostel">Hostel</option>
             <option value="studio">Studio</option>
-            <option value="villa">Villa</option>
-            <option value="room">Room / Sublet</option>
+            <option value="office">Commercial Office</option>
+            <option value="shop">Commercial Shop</option>
           </select>
         </div>
 
@@ -227,10 +231,11 @@ export default function PropertyFilters({
             onChange={(e) => setSort(e.target.value)}
           >
             <option value="newest">Newest Listings</option>
+            <option value="score">Listing Completeness Score</option>
+            <option value="views">Most Popular / Viewed</option>
             <option value="price_asc">Price: Low to High</option>
             <option value="price_desc">Price: High to Low</option>
             <option value="bedrooms">Most Bedrooms</option>
-            <option value="oldest">Oldest First</option>
           </select>
         </div>
 

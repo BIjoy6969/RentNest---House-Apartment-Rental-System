@@ -114,6 +114,27 @@ export default function AdminPanel() {
     }
   };
 
+  const handleVerifyProperty = async (propertyId, status) => {
+    try {
+      await api.patch(`/admin/properties/${propertyId}/verify`, { status });
+      toast.success(`Property marked as ${status}`);
+      loadProperties();
+    } catch {
+      toast.error('Failed to update property verification status');
+    }
+  };
+
+  const handleToggleLandlordVerification = async (user) => {
+    const nextStatus = user.verificationStatus === 'verified' ? 'unverified' : 'verified';
+    try {
+      await api.patch(`/admin/users/${user._id}/verify`, { status: nextStatus });
+      toast.success(`Landlord ${user.name} marked as ${nextStatus}`);
+      loadUsers();
+    } catch {
+      toast.error('Failed to update landlord verification');
+    }
+  };
+
   const handleDeleteProperty = async (p) => {
     if (!window.confirm(`Delete property "${p.title}"? This is permanent.`)) return;
     try {
@@ -139,37 +160,47 @@ export default function AdminPanel() {
   /* --------------- Render --------------- */
   return (
     <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
-      {/* Header */}
       <div className="dashboard-header">
         <div>
-          <span className="section-kicker">Administrator</span>
+          <span className="section-kicker">Platform Administration</span>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800 }}>Admin Control Panel</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Manage users, moderate listings, and resolve platform complaints
+            Moderate property listings, verify landlord credentials, and manage platform integrity
           </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="dashboard-tabs">
-        {['overview', 'users', 'properties', 'complaints'].map((tab) => (
-          <button
-            key={tab}
-            className={`dashboard-tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === 'overview' && '📊 Overview'}
-            {tab === 'users' && `👥 Users (${users.length || '…'})`}
-            {tab === 'properties' && `🏢 Properties (${properties.length || '…'})`}
-            {tab === 'complaints' && `⚠️ Complaints (${complaints.length || '…'})`}
-          </button>
-        ))}
+        <button
+          className={`dashboard-tab ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          📊 Stats & Health
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          👥 Users & Verification ({users.length})
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'properties' ? 'active' : ''}`}
+          onClick={() => setActiveTab('properties')}
+        >
+          🏢 Properties Moderation ({properties.length})
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'complaints' ? 'active' : ''}`}
+          onClick={() => setActiveTab('complaints')}
+        >
+          🚨 Reports & Complaints ({complaints.length})
+        </button>
       </div>
 
-      {/* Tab Content */}
       {loading ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Loading data…
+          Loading admin data…
         </div>
       ) : (
         <>
@@ -177,78 +208,117 @@ export default function AdminPanel() {
           {activeTab === 'overview' && (
             <div>
               <div className="stat-grid">
-                <div className="stat-card" onClick={() => setActiveTab('users')} style={{ cursor: 'pointer' }}>
-                  <div className="stat-value">{stats.users || 0}</div>
-                  <div className="stat-label">Registered Users</div>
-                </div>
-                <div className="stat-card" onClick={() => setActiveTab('properties')} style={{ cursor: 'pointer' }}>
-                  <div className="stat-value">{stats.properties || 0}</div>
-                  <div className="stat-label">Listed Properties</div>
-                </div>
                 <div className="stat-card">
-                  <div className="stat-value">{stats.bookings || 0}</div>
-                  <div className="stat-label">Total Bookings</div>
+                  <div className="stat-value">{stats.users?.total ?? 0}</div>
+                  <div className="stat-label">Total Users</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                    {stats.users?.tenants ?? 0} tenants • {stats.users?.landlords ?? 0} landlords
+                  </div>
                 </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats.applications || 0}</div>
-                  <div className="stat-label">Rental Applications</div>
-                </div>
-                <div className="stat-card" onClick={() => setActiveTab('complaints')} style={{ cursor: 'pointer' }}>
-                  <div className="stat-value">{stats.complaints || 0}</div>
-                  <div className="stat-label">Open Complaints</div>
-                </div>
-              </div>
 
-              <div className="rn-card" style={{ padding: '2rem', textAlign: 'center' }}>
-                <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-                  Click any stat card above to drill into management details, or use the tabs to navigate directly.
-                </p>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.properties?.total ?? 0}</div>
+                  <div className="stat-label">Listed Properties</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                    {stats.properties?.active ?? 0} active • {stats.properties?.flagged ?? 0} flagged
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-value">{stats.bookings?.total ?? 0}</div>
+                  <div className="stat-label">Tour Bookings</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                    {stats.bookings?.pending ?? 0} pending review
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-value">{stats.complaints?.total ?? 0}</div>
+                  <div className="stat-label">Filed Complaints</div>
+                  <div style={{ fontSize: '0.8rem', color: stats.complaints?.open > 0 ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '0.4rem' }}>
+                    {stats.complaints?.open ?? 0} open complaints
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* ====== USERS TAB ====== */}
           {activeTab === 'users' && (
-            <div>
+            <div className="rn-card" style={{ padding: '1.5rem', overflowX: 'auto' }}>
               {users.length === 0 ? (
-                <EmptyState icon="👥" title="No Users Found" description="No registered users in the system." />
+                <EmptyState icon="👥" title="No Users Found" description="There are no registered users on the platform." />
               ) : (
-                <div className="table-container">
-                  <table className="rn-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Actions</th>
+                <table className="rn-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                      <th style={{ padding: '0.75rem' }}>Name</th>
+                      <th style={{ padding: '0.75rem' }}>Email</th>
+                      <th style={{ padding: '0.75rem' }}>Role</th>
+                      <th style={{ padding: '0.75rem' }}>Verification</th>
+                      <th style={{ padding: '0.75rem' }}>Joined</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>{u.name}</td>
+                        <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <span
+                            style={{
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              backgroundColor: u.role === 'admin' ? '#fef3c7' : u.role === 'landlord' ? '#e0f2fe' : '#f1f5f9',
+                              color: u.role === 'admin' ? '#b45309' : u.role === 'landlord' ? '#0369a1' : '#475569'
+                            }}
+                          >
+                            {u.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {u.role === 'landlord' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLandlordVerification(u)}
+                              style={{
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '0.2rem 0.6rem',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                backgroundColor: u.verificationStatus === 'verified' ? '#dcfce7' : '#fee2e2',
+                                color: u.verificationStatus === 'verified' ? '#15803d' : '#b91c1c'
+                              }}
+                            >
+                              {u.verificationStatus === 'verified' ? '✓ Verified' : '✕ Unverified'}
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>N/A</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)}>
+                              Edit
+                            </Button>
+                            <Button variant="danger" size="sm" onClick={() => handleDeleteUser(u._id, u.name)}>
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u) => (
-                        <tr key={u._id}>
-                          <td style={{ fontWeight: 600 }}>{u.name}</td>
-                          <td>{u.email}</td>
-                          <td>
-                            <StatusBadge
-                              status={u.role === 'admin' ? 'flagged' : u.role === 'landlord' ? 'primary' : 'active'}
-                              label={u.role.toUpperCase()}
-                            />
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <Button variant="outline" size="sm" onClick={() => handleEditUser(u)}>
-                                ✏️ Edit
-                              </Button>
-                              <Button variant="danger" size="sm" onClick={() => handleDeleteUser(u._id, u.name)}>
-                                Delete
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
           )}
@@ -284,21 +354,42 @@ export default function AdminPanel() {
                           }}
                         />
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem' }}>
-                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{p.title}</h4>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>{p.title}</h4>
                             <StatusBadge status={p.isActive ? 'active' : 'inactive'} label={p.isActive ? 'Active' : 'Inactive'} />
+                            <span
+                              style={{
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                backgroundColor: p.verificationStatus === 'approved' ? '#dcfce7' : '#fee2e2',
+                                color: p.verificationStatus === 'approved' ? '#15803d' : '#b91c1c'
+                              }}
+                            >
+                              Verification: {p.verificationStatus?.toUpperCase() || 'APPROVED'}
+                            </span>
                             {p.isFlagged && <StatusBadge status="flagged" label="Flagged" />}
                           </div>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 0.25rem' }}>
                             📍 {[p.address, p.city, p.state].filter(Boolean).join(', ')} • ৳{Number(p.rent || 0).toLocaleString()} / mo
                           </p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            Owner: {p.owner?.name || 'Unknown'} ({p.owner?.email || '—'})
+                          <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0 }}>
+                            Owner: {p.owner?.name || 'Unknown'} ({p.owner?.email || '—'}) • Views: {p.viewCount || 0}
                           </p>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {p.verificationStatus !== 'approved' ? (
+                          <Button variant="primary" size="sm" onClick={() => handleVerifyProperty(p._id, 'approved')}>
+                            ✓ Verify
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={() => handleVerifyProperty(p._id, 'rejected')}>
+                            ✕ Unverify
+                          </Button>
+                        )}
                         {!p.isFlagged ? (
                           <Button variant="secondary" size="sm" onClick={() => handleFlagProperty(p)}>
                             🚩 Flag

@@ -1,5 +1,5 @@
 // src/utils/imageUrl.js
-const DEFAULT_FALLBACK = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1200&auto=format&fit=crop';
+const DEFAULT_FALLBACK = 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop';
 
 /**
  * Resolves a property image URL to a full, loadable path in any environment (dev, staging, production).

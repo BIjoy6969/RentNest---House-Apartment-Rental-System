@@ -8,6 +8,14 @@ import Button from './Button';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const [theme, setTheme] = useState(localStorage.getItem('rn-theme') || 'light');
+  
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('rn-theme', theme);
+  }, [theme]);
+  
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
   const { toast } = useToast();
   const nav = useNavigate();
   const location = useLocation();
@@ -96,7 +104,7 @@ export default function Navbar() {
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: 'var(--bg-surface)',
         backdropFilter: 'blur(8px)',
         borderBottom: '1px solid var(--border-color)',
         boxShadow: 'var(--shadow-xs)'
@@ -195,6 +203,17 @@ export default function Navbar() {
           }}
           className="desktop-nav"
         >
+          <button 
+            onClick={toggleTheme} 
+            title="Toggle Light/Dark Mode"
+            style={{ 
+              background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', 
+              fontSize: '1.2rem', cursor: 'pointer', padding: '0 8px', borderRadius: '8px', height: '38px',
+              display: 'flex', alignItems: 'center'
+            }}>
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
               {/* Notification Bell */}

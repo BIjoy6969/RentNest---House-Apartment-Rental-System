@@ -365,7 +365,109 @@ export default function PropertyDetails() {
             </div>
           )}
 
-          {/* Landlord Contact Card */}
+          {/* Bangladesh Transparent Cost Breakdown */}
+          <div
+            style={{
+              padding: '1.5rem',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 'var(--radius-lg)',
+              marginBottom: '2.5rem'
+            }}
+          >
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 1rem', color: '#0f172a' }}>
+              💰 Transparent Cost & Deposit Breakdown
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem' }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block' }}>Monthly Base Rent</span>
+                <b style={{ fontSize: '1.1rem', color: '#0f172a' }}>৳{Number(property.rent).toLocaleString()}</b>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block' }}>Service Charge</span>
+                <b style={{ fontSize: '1.1rem', color: '#0f172a' }}>
+                  {property.costs?.serviceCharge > 0 ? `৳${property.costs.serviceCharge.toLocaleString()}/mo` : 'Included'}
+                </b>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block' }}>Advance Rent</span>
+                <b style={{ fontSize: '1.1rem', color: '#0f172a' }}>
+                  {property.costs?.advanceMonths || 1} Month(s) (৳{((property.costs?.advanceMonths || 1) * property.rent).toLocaleString()})
+                </b>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block' }}>Security Deposit</span>
+                <b style={{ fontSize: '1.1rem', color: '#0f172a' }}>
+                  {property.costs?.securityDeposit > 0 ? `৳${property.costs.securityDeposit.toLocaleString()}` : 'None'}
+                </b>
+              </div>
+            </div>
+
+            {property.costs?.parking > 0 && (
+              <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#475569' }}>
+                🚗 Parking space optional at ৳{property.costs.parking.toLocaleString()}/mo
+              </div>
+            )}
+          </div>
+
+          {/* Tenant Eligibility & House Rules */}
+          <div
+            style={{
+              padding: '1.5rem',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: 'var(--radius-lg)',
+              marginBottom: '2.5rem'
+            }}
+          >
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 1rem', color: '#166534' }}>
+              📋 Tenant Eligibility & House Policies
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', fontSize: '0.9rem' }}>
+              <div>
+                <span style={{ color: '#15803d', fontWeight: 700 }}>
+                  {property.rules?.familyAllowed !== false ? '✓ Family Allowed' : '✕ No Families'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: property.rules?.bachelorAllowed !== false ? '#15803d' : '#b91c1c', fontWeight: 700 }}>
+                  {property.rules?.bachelorAllowed !== false ? '✓ Bachelor Allowed' : '✕ No Bachelors'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: property.rules?.studentAllowed !== false ? '#15803d' : '#b91c1c', fontWeight: 700 }}>
+                  {property.rules?.studentAllowed !== false ? '✓ Students Allowed' : '✕ No Students'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: property.rules?.petsAllowed ? '#15803d' : '#64748b' }}>
+                  {property.rules?.petsAllowed ? '✓ Pets Allowed' : '✕ No Pets'}
+                </span>
+              </div>
+            </div>
+            {property.rules?.minLeaseDurationMonths && (
+              <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#166534' }}>
+                Minimum Lease Duration: <b>{property.rules.minLeaseDurationMonths} Months</b>
+              </div>
+            )}
+          </div>
+
+          {/* Price History Timeline (if tracked) */}
+          {property.priceHistory && property.priceHistory.length > 1 && (
+            <div style={{ marginBottom: '2.5rem', padding: '1.25rem', backgroundColor: '#ffffff', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
+              <h4 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>📈 Price History Audit</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                {property.priceHistory.map((ph, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                    <span>৳{Number(ph.rent).toLocaleString()} / month</span>
+                    <span>{new Date(ph.changedAt).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Landlord Contact & Trust Card */}
           <div
             style={{
               padding: '1.5rem',
@@ -383,26 +485,31 @@ export default function PropertyDetails() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div
                 style={{
-                  width: '52px',
-                  height: '52px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '50%',
-                  backgroundColor: 'var(--primary)',
+                  backgroundColor: '#0284c7',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.4rem',
+                  fontSize: '1.5rem',
                   fontWeight: 700
                 }}
               >
                 {(landlord.name || 'L').charAt(0).toUpperCase()}
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>
-                  Listed by {landlord.name || 'Verified Landlord'}
+                <div style={{ fontWeight: 700, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {landlord.name || 'Verified Landlord'}
+                  {landlord.verificationStatus === 'verified' && (
+                    <span style={{ fontSize: '0.75rem', color: '#16a34a', backgroundColor: '#dcfce7', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                      ✓ Verified
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Verified Property Owner • Direct Inquiries
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  ⭐ Trust Rating: <b>{landlord.trustScore?.averageRating || 4.8}/5</b> • Response Rate: <b>{landlord.trustScore?.responseRate || 100}%</b>
                 </div>
               </div>
             </div>
@@ -526,12 +633,14 @@ export default function PropertyDetails() {
         }}
       />
 
-      <ChatBox
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        property={property}
-        receiver={property.owner}
-      />
+      {chatOpen && (
+        <ChatBox
+          propertyId={property._id}
+          withUserId={property.owner?._id || property.owner}
+          peerName={property.owner?.name}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
 
       <ReportPropertyModal
         isOpen={reportOpen}

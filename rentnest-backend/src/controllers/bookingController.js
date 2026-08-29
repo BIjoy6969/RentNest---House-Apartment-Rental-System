@@ -148,9 +148,9 @@ exports.setStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ['approved', 'rejected', 'cancelled', 'completed', 'pending'];
+    const allowedStatuses = ['approved', 'rejected', 'cancelled', 'completed'];
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ message: 'Invalid booking status' });
+      return res.status(400).json({ message: 'Invalid booking status transition' });
     }
 
     const booking = await Booking.findById(id).populate('property', 'title');
@@ -176,12 +176,19 @@ exports.setStatus = async (req, res, next) => {
     await booking.save();
 
     // Notify tenant of booking status change
+    let notifMessage = `Your tour viewing for "${booking.property?.title || 'Property'}" has been ${status}.`;
+    let notifTitle = `Viewing Request ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+    if (status === 'completed') {
+      notifTitle = 'Tour Completed — What did you think?';
+      notifMessage = `Your tour for "${booking.property?.title || 'Property'}" is completed! Please share your post-tour decision (Interested / Not Interested).`;
+    }
+
     await createNotification({
       recipient: booking.tenant,
       sender: req.user._id,
       type: 'booking_status',
-      title: `Viewing Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-      message: `Your tour viewing for "${booking.property?.title || 'Property'}" has been ${status}.`,
+      title: notifTitle,
+      message: notifMessage,
       link: '/tenant'
     });
 

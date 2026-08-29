@@ -11,4 +11,14 @@ router.get('/me', auth, applicationController.mine);
 router.get('/:id', auth, applicationController.getOne);
 router.patch('/:id/status', auth, requireRole('landlord', 'admin'), applicationController.setStatus);
 
+// Tenant withdrawal
+router.patch('/:id/withdraw', auth, requireRole('tenant'), applicationController.withdraw);
+
+// Landlord requests clarification / info
+router.patch('/:id/request-info', auth, requireRole('landlord', 'admin'), applicationController.requestInfo);
+
+// Tenant responds to info request
+router.patch('/:id/respond-info', auth, requireRole('tenant'), applicationController.respondInfo);
+
 module.exports = router;
+

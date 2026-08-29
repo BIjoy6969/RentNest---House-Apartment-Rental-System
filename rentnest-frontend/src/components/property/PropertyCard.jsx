@@ -121,24 +121,47 @@ export default function PropertyCard({
         {/* Price Row */}
         <div className="prop-card-price-row">
           <div className="prop-card-price">
-            ৳{Number(rent || 0).toLocaleString()} <span>/ month</span>
+            ৳{Number(rent || 0).toLocaleString()} <span>/ mo</span>
           </div>
-          {completenessScore >= 80 && (
+          {property.verificationStatus === 'approved' ? (
             <span
               style={{
-                fontSize: '0.75rem',
-                color: 'var(--success-text)',
-                backgroundColor: 'var(--success-bg)',
+                fontSize: '0.72rem',
+                color: '#15803d',
+                backgroundColor: '#dcfce7',
+                padding: '0.15rem 0.45rem',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.2rem'
+              }}
+              title="Admin-verified trustworthy property"
+            >
+              ✓ Verified
+            </span>
+          ) : completenessScore >= 80 ? (
+            <span
+              style={{
+                fontSize: '0.72rem',
+                color: '#0369a1',
+                backgroundColor: '#e0f2fe',
                 padding: '0.15rem 0.45rem',
                 borderRadius: 'var(--radius-sm)',
                 fontWeight: 700
               }}
-              title="Verified quality listing details"
             >
-              ✓ Verified
+              Quality Score: {completenessScore}%
             </span>
-          )}
+          ) : null}
         </div>
+
+        {/* Total Cost Breakdown hint if service charge exists */}
+        {property.costs?.serviceCharge > 0 && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '-0.2rem', marginBottom: '0.35rem' }}>
+            +৳{property.costs.serviceCharge.toLocaleString()} service charge
+          </div>
+        )}
 
         {/* Title */}
         <Link to={`/property/${_id}`} style={{ textDecoration: 'none' }}>
@@ -147,16 +170,29 @@ export default function PropertyCard({
           </h3>
         </Link>
 
-        {/* Location */}
-        <div className="prop-card-location">
-          <span>📍</span>
-          <span>{[city, state].filter(Boolean).join(', ') || 'Available in city'}</span>
+        {/* Location & Landlord Trust Rating */}
+        <div className="prop-card-location" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <span>📍</span>
+            <span>{[property.location?.area, city].filter(Boolean).join(', ') || city || 'Bangladesh'}</span>
+          </div>
+
+          {property.owner?.trustScore?.averageRating > 0 && (
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b' }}>
+              ⭐ {property.owner.trustScore.averageRating}
+            </span>
+          )}
         </div>
 
         {/* Key Features */}
         <div className="prop-card-features">
           <span>🛏️ {bedrooms} {bedrooms === 1 ? 'Bed' : 'Beds'}</span>
           <span>🚿 {bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}</span>
+          {property.rules?.bachelorAllowed && (
+            <span style={{ fontSize: '0.75rem', color: '#166534', backgroundColor: '#f0fdf4', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+              Bachelor OK
+            </span>
+          )}
           {amenities && amenities.length > 0 && (
             <span style={{ marginLeft: 'auto', color: 'var(--primary)', fontSize: '0.8rem' }}>
               +{amenities.length} amenities

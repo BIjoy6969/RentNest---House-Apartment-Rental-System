@@ -6,6 +6,7 @@ import LandlordOverview from '../components/landlord/LandlordOverview';
 import LandlordProperties from '../components/landlord/LandlordProperties';
 import LandlordBookings from '../components/landlord/LandlordBookings';
 import LandlordApplications from '../components/landlord/LandlordApplications';
+import LandlordDecisions from '../components/landlord/LandlordDecisions';
 import LandlordProfile from '../components/landlord/LandlordProfile';
 import PropertyFormModal from '../components/landlord/PropertyFormModal';
 import ChatBox from '../components/messaging/ChatBox';
@@ -13,7 +14,7 @@ import ChatBox from '../components/messaging/ChatBox';
 export default function LandlordDashboard() {
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'properties' | 'bookings' | 'applications' | 'profile'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'properties' | 'bookings' | 'decisions' | 'applications' | 'profile'
   const [properties, setProperties] = useState([]);
   const [incomingBookings, setIncomingBookings] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -70,7 +71,7 @@ export default function LandlordDashboard() {
           <span className="section-kicker">Landlord Portal</span>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800 }}>Welcome, {user?.name || 'Landlord'}</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Manage listings, review tour requests, and screen rental applicants
+            Manage listings, review tour requests, track tenant tour feedback, and screen applicants
           </p>
         </div>
       </div>
@@ -81,7 +82,7 @@ export default function LandlordDashboard() {
           className={`dashboard-tab ${activeTab === 'overview' ? 'active' : ''}`}
           onClick={() => setActiveTab('overview')}
         >
-          📊 Overview
+          📊 Overview & Trust Score
         </button>
         <button
           className={`dashboard-tab ${activeTab === 'properties' ? 'active' : ''}`}
@@ -94,6 +95,12 @@ export default function LandlordDashboard() {
           onClick={() => setActiveTab('bookings')}
         >
           📅 Tour Requests ({incomingBookings.length})
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'decisions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('decisions')}
+        >
+          🤝 Tenant Tour Feedback
         </button>
         <button
           className={`dashboard-tab ${activeTab === 'applications' ? 'active' : ''}`}
@@ -112,6 +119,7 @@ export default function LandlordDashboard() {
       {/* Tab Contents */}
       {activeTab === 'overview' && (
         <LandlordOverview
+          user={user}
           properties={properties}
           bookings={incomingBookings}
           applications={applications}
@@ -135,6 +143,12 @@ export default function LandlordDashboard() {
           bookings={incomingBookings}
           loading={loading}
           onRefresh={loadData}
+          onOpenChat={handleOpenChat}
+        />
+      )}
+
+      {activeTab === 'decisions' && (
+        <LandlordDecisions
           onOpenChat={handleOpenChat}
         />
       )}

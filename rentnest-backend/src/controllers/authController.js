@@ -17,6 +17,18 @@ function sanitizeUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    phone: user.phone || '',
+    avatar: user.avatar || '',
+    verificationStatus: user.verificationStatus || 'unverified',
+    isSuspended: user.isSuspended || false,
+    trustScore: user.trustScore || {
+      averageRating: 0,
+      totalRatings: 0,
+      responseRate: 100,
+      completedRentals: 0,
+      cancellationRate: 0
+    },
+    rentalPreferences: user.rentalPreferences || {},
     favorites: user.favorites || []
   };
 }

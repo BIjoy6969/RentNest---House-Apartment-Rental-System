@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import TenantOverview from '../components/tenant/TenantOverview';
 import TenantBookings from '../components/tenant/TenantBookings';
 import TenantApplications from '../components/tenant/TenantApplications';
+import TenantDecisions from '../components/tenant/TenantDecisions';
 import TenantWishlist from '../components/tenant/TenantWishlist';
 import TenantProfile from '../components/tenant/TenantProfile';
 import BookingModal from '../components/booking/BookingModal';
@@ -15,7 +16,7 @@ export default function TenantDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'bookings' | 'applications' | 'wishlist' | 'profile'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'bookings' | 'decisions' | 'applications' | 'wishlist' | 'profile'
   const [bookings, setBookings] = useState([]);
   const [applications, setApplications] = useState([]);
   const [wishlist, setWishlist] = useState([]);
@@ -71,7 +72,7 @@ export default function TenantDashboard() {
           <span className="section-kicker">Tenant Portal</span>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800 }}>Welcome, {user?.name || 'Tenant'}</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Track your viewing tours, applications, and saved properties
+            Manage your rental journey — viewings, two-sided decisions, and digital applications
           </p>
         </div>
       </div>
@@ -91,6 +92,12 @@ export default function TenantDashboard() {
           📅 Tour Bookings ({bookings.length})
         </button>
         <button
+          className={`dashboard-tab ${activeTab === 'decisions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('decisions')}
+        >
+          🤝 Tour Decisions
+        </button>
+        <button
           className={`dashboard-tab ${activeTab === 'applications' ? 'active' : ''}`}
           onClick={() => setActiveTab('applications')}
         >
@@ -106,7 +113,7 @@ export default function TenantDashboard() {
           className={`dashboard-tab ${activeTab === 'profile' ? 'active' : ''}`}
           onClick={() => setActiveTab('profile')}
         >
-          ⚙️ Profile Settings
+          ⚙️ Rental Preferences & Profile
         </button>
       </div>
 
@@ -130,11 +137,20 @@ export default function TenantDashboard() {
         />
       )}
 
+      {activeTab === 'decisions' && (
+        <TenantDecisions
+          bookings={bookings}
+          onRefresh={loadData}
+          onOpenChat={handleOpenChat}
+        />
+      )}
+
       {activeTab === 'applications' && (
         <TenantApplications
           applications={applications}
           loading={loading}
           onOpenChat={handleOpenChat}
+          onRefresh={loadData}
         />
       )}
 

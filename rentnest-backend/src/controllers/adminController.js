@@ -184,3 +184,51 @@ exports.listApplications = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * Property Moderation / Verification
+ * PATCH /api/admin/properties/:id/verify
+ */
+exports.verifyProperty = async (req, res, next) => {
+  try {
+    const { status } = req.body; // 'approved' | 'rejected' | 'suspended' | 'pending'
+    if (!['approved', 'rejected', 'suspended', 'pending'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid verification status' });
+    }
+
+    const prop = await Property.findByIdAndUpdate(
+      req.params.id,
+      { verificationStatus: status },
+      { new: true }
+    ).populate('owner', 'name email role verificationStatus');
+
+    if (!prop) return res.status(404).json({ message: 'Property not found' });
+    res.json(prop);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Landlord Moderation / Verification
+ * PATCH /api/admin/users/:id/verify
+ */
+exports.verifyLandlord = async (req, res, next) => {
+  try {
+    const { status, isSuspended } = req.body; // 'verified' | 'unverified' | 'suspended'
+    const updates = {};
+    if (status && ['verified', 'unverified', 'suspended'].includes(status)) {
+      updates.verificationStatus = status;
+    }
+    if (isSuspended !== undefined) {
+      updates.isSuspended = !!isSuspended;
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+

@@ -19,7 +19,11 @@ router.delete('/users/:id', adminController.deleteUser);
 router.get('/properties', adminController.listProperties);
 router.patch('/properties/:id/flag', adminController.flagProperty);
 router.patch('/properties/:id/unflag', adminController.unflagProperty);
+router.patch('/properties/:id/verify', adminController.verifyProperty);
 router.delete('/properties/:id', adminController.deleteProperty);
+
+// User Moderation & Verification
+router.patch('/users/:id/verify', adminController.verifyLandlord);
 
 // Applications
 router.get('/applications', adminController.listApplications);
@@ -29,3 +33,4 @@ router.get('/complaints', adminController.listComplaints);
 router.patch('/complaints/:id/status', adminController.setComplaintStatus);
 
 module.exports = router;
+

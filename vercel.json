@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "rentnest-backend/src/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "rentnest-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "rentnest-backend/src/server.js"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "rentnest-backend/src/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "rentnest-frontend/$1"
+    }
+  ]
+}

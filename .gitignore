@@ -1,7 +1,6 @@
 # Root .gitignore
 node_modules/
 build/
-.env
 .env.local
 .DS_Store
 npm-debug.log*

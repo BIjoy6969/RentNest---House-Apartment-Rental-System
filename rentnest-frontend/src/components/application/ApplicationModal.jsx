@@ -15,7 +15,7 @@ export default function ApplicationModal({
   const [form, setForm] = useState({
     incomeMonthly: '',
     employmentStatus: 'Employed',
-    creditScore: '700',
+    landlordRating: 5,
     occupants: '1',
     pets: false,
     message: ''
@@ -47,7 +47,7 @@ export default function ApplicationModal({
         form: {
           incomeMonthly: Number(form.incomeMonthly),
           employmentStatus: form.employmentStatus,
-          creditScore: Number(form.creditScore),
+          landlordRating: Number(form.landlordRating),
           occupants: Number(form.occupants),
           pets: form.pets,
           message: form.message.trim()
@@ -70,7 +70,7 @@ export default function ApplicationModal({
     setForm({
       incomeMonthly: '',
       employmentStatus: 'Employed',
-      creditScore: '700',
+      landlordRating: 5,
       occupants: '1',
       pets: false,
       message: ''
@@ -159,19 +159,29 @@ export default function ApplicationModal({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Credit Score / Rating</label>
-            <input
-              type="number"
-              className="form-input"
-              name="creditScore"
-              placeholder="300-850"
-              value={form.creditScore}
-              onChange={handleChange}
-              min="300"
-              max="850"
-            />
-          </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Rate Landlord (Impression)</label>
+              <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.25rem' }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, landlordRating: star }))}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '1.5rem',
+                      color: form.landlordRating >= star ? '#f59e0b' : '#d1d5db',
+                      padding: 0,
+                      lineHeight: 1
+                    }}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Number of Occupants</label>
