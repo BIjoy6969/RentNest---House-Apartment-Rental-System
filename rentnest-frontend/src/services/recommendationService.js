@@ -1,4 +1,4 @@
-﻿// src/services/recommendationService.js
+// src/services/recommendationService.js
 import { api } from '../api';
 
 export const recommendationService = {

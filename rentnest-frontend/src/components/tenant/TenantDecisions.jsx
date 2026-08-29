@@ -1,9 +1,8 @@
-﻿// src/components/tenant/TenantDecisions.jsx
+// src/components/tenant/TenantDecisions.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { tourDecisionService } from '../../services/tourDecisionService';
 import { useToast } from '../../context/ToastContext';
 import Button from '../common/Button';
-import StatusBadge from '../common/StatusBadge';
 import EmptyState from '../common/EmptyState';
 import { Link } from 'react-router-dom';
 

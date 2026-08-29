@@ -1,4 +1,4 @@
-﻿// src/services/tourDecisionService.js
+// src/services/tourDecisionService.js
 import { api } from '../api';
 
 export const tourDecisionService = {

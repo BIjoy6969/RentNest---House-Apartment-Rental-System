@@ -22,7 +22,6 @@ export default function PropertyCard({
     _id,
     title,
     city,
-    state,
     rent,
     bedrooms = 1,
     bathrooms = 1,

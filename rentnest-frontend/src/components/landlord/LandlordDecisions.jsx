@@ -1,4 +1,4 @@
-﻿// src/components/landlord/LandlordDecisions.jsx
+// src/components/landlord/LandlordDecisions.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { tourDecisionService } from '../../services/tourDecisionService';
 import { useToast } from '../../context/ToastContext';
