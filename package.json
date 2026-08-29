@@ -1,0 +1,9 @@
+{
+  "name": "rentnest-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd rentnest-frontend && CI=false npm install && npm run build",
+    "vercel-build": "cd rentnest-frontend && CI=false npm install && npm run build"
+  }
+}
