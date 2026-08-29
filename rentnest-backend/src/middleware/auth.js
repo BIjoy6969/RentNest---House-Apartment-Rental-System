@@ -3,48 +3,38 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 /**
- * Auth middleware
+ * Authentication middleware
  * - Reads Authorization: Bearer <token>
  * - Verifies JWT with JWT_SECRET
- * - Loads the user (without password) and attaches to req.user
- *
- * Supports tokens signed as:
- *   { userId: <id>, role: <role> }   // your current authRoutes.js
- *   { id: <id>, role: <role> }       // older code paths
+ * - Loads user (excluding password) into req.user
  */
 async function auth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!token) {
-      return res.status(401).json({ ok: false, message: 'No token' });
+      return res.status(401).json({ message: 'Authorization token required' });
     }
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const secret = process.env.JWT_SECRET || 'superlongrandomsecretstring';
+    const payload = jwt.verify(token, secret);
 
-    // accept either payload.userId or payload.id
     const userId = payload.userId || payload.id;
     if (!userId) {
-      return res.status(401).json({ ok: false, message: 'Invalid token payload' });
+      return res.status(401).json({ message: 'Invalid token payload' });
     }
 
     const user = await User.findById(userId).select('-password');
     if (!user) {
-      return res.status(401).json({ ok: false, message: 'Invalid token' });
+      return res.status(401).json({ message: 'User no longer exists' });
     }
 
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 }
 
-/**
- * Export in both styles so routes can do either:
- *   const auth = require('../middleware/auth')
- * or
- *   const { auth } = require('../middleware/auth')
- */
 module.exports = auth;
 module.exports.auth = auth;

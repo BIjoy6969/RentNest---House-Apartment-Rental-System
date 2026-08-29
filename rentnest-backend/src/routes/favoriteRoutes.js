@@ -23,7 +23,7 @@ router.get('/mine', auth, async (req, res) => {
         .populate({
           path: 'favorites',
           match: { isActive: true, isFlagged: { $ne: true } },
-          select: 'title city state country rent bedrooms bathrooms imageUrl createdAt',
+          select: 'title city state country rent bedrooms bathrooms imageUrl images status propertyType createdAt',
           options: { sort: { createdAt: -1 } },
         });
       return res.json(me?.favorites || []);
@@ -48,9 +48,13 @@ router.post('/:propertyId', auth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid property id' });
     }
 
-    const prop = await Property.findById(propertyId).select('_id isActive isFlagged');
+    const prop = await Property.findById(propertyId).select('_id owner isActive isFlagged');
     if (!prop || !prop.isActive || prop.isFlagged) {
       return res.status(404).json({ message: 'Property not available' });
+    }
+
+    if (String(prop.owner) === String(req.user.id || req.user._id)) {
+      return res.status(400).json({ message: 'You cannot save your own property to wishlist' });
     }
 
     await User.updateOne(

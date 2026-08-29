@@ -1,201 +1,173 @@
+// src/pages/LandlordDashboard.js
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
-import { useEffect, useState } from 'react';
 import { api } from '../api';
+import LandlordOverview from '../components/landlord/LandlordOverview';
+import LandlordProperties from '../components/landlord/LandlordProperties';
+import LandlordBookings from '../components/landlord/LandlordBookings';
+import LandlordApplications from '../components/landlord/LandlordApplications';
+import LandlordProfile from '../components/landlord/LandlordProfile';
+import PropertyFormModal from '../components/landlord/PropertyFormModal';
+import ChatBox from '../components/messaging/ChatBox';
 
 export default function LandlordDashboard() {
   const { user } = useAuth();
 
-  const [form, setForm] = useState({
-    title: '', description: '', address: '', city: '', state: '', country: '',
-    rent: '', bedrooms: 1, bathrooms: 1, amenities: '', image: null
-  });
-  const [saving, setSaving] = useState(false);
-  const [mine, setMine] = useState([]);
-  const [incoming, setIncoming] = useState([]);
-  const [chat, setChat] = useState({ propertyId: '', withUserId: '', message: '', thread: [] });
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'properties' | 'bookings' | 'applications' | 'profile'
+  const [properties, setProperties] = useState([]);
+  const [incomingBookings, setIncomingBookings] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // ----- Loaders -----
-  const loadMine = async () => {
-    const res = await api.get('/properties/mine/list');
-    setMine(res.data || []);
-  };
+  // Modals
+  const [propertyModalOpen, setPropertyModalOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState(null);
+  const [chatInfo, setChatInfo] = useState(null);
 
-  const loadIncoming = async () => {
-    const res = await api.get('/bookings/incoming');
-    setIncoming(res.data || []);
-  };
+  const loadData = useCallback(async () => {
+    if (!user || user.role !== 'landlord') return;
+    setLoading(true);
+    try {
+      const [propRes, bookRes, appRes] = await Promise.allSettled([
+        api.get('/properties/mine/list'),
+        api.get('/bookings/incoming'),
+        api.get('/applications/mine')
+      ]);
 
-  useEffect(() => {
-    if (!user) return;
-    loadMine();
-    loadIncoming();
+      if (propRes.status === 'fulfilled') setProperties(propRes.value.data || []);
+      if (bookRes.status === 'fulfilled') setIncomingBookings(bookRes.value.data || []);
+      if (appRes.status === 'fulfilled') setApplications(appRes.value.data || []);
+    } catch (e) {
+      console.error('Failed to load landlord data', e);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
-  // ----- Form handlers -----
-  const onChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  // Handle Image Upload
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setForm(prevForm => ({ ...prevForm, image: file }));
-    }
+  const handleOpenAddProperty = () => {
+    setEditingProperty(null);
+    setPropertyModalOpen(true);
   };
 
-  const createProperty = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-
-    const formData = new FormData();
-    formData.append('title', form.title);
-    formData.append('rent', form.rent);
-    formData.append('address', form.address);
-    formData.append('city', form.city);
-    formData.append('state', form.state);
-    formData.append('country', form.country);
-    formData.append('bedrooms', form.bedrooms);
-    formData.append('bathrooms', form.bathrooms);
-    formData.append('amenities', form.amenities);
-    formData.append('description', form.description);
-    if (form.image) formData.append('image', form.image); // Handling image upload here
-
-    try {
-      await api.post('/properties/create', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setForm({
-        title: '', description: '', address: '', city: '', state: '', country: '',
-        rent: '', bedrooms: 1, bathrooms: 1, amenities: '', image: null
-      });
-      await loadMine();
-      alert('Property created.');
-    } catch (error) {
-      console.error("Error during property creation:", error);
-      alert('Failed to create property.');
-    } finally {
-      setSaving(false);
-    }
+  const handleOpenEditProperty = (prop) => {
+    setEditingProperty(prop);
+    setPropertyModalOpen(true);
   };
 
-  const updateProperty = async (p) => {
-    const title = prompt('New title', p.title);
-    if (title == null) return;
-    await api.put(`/properties/${p._id}`, { title });
-    await loadMine();
+  const handleOpenChat = (propertyId, withUserId, peerName) => {
+    setChatInfo({ propertyId, withUserId, peerName });
   };
-
-  const deleteProperty = async (p) => {
-    if (!window.confirm('Delete this property?')) return;
-    await api.delete(`/properties/${p._id}`);
-    await loadMine();
-  };
-
-  const setStatus = async (b, status) => {
-    await api.patch(`/bookings/${b._id}/status`, { status });
-    await loadIncoming();
-    alert(`Marked ${status}`);
-  };
-
-  const openThread = async (propertyId, tenantId) => {
-    const res = await api.get('/messages/thread', { params: { propertyId, withUserId: tenantId } });
-    setChat({ propertyId, withUserId: tenantId, message: '', thread: res.data || [] });
-  };
-
-  const sendMessage = async () => {
-    if (!chat.message.trim()) return;
-    const res = await api.post('/messages', {
-      propertyId: chat.propertyId,
-      receiverId: chat.withUserId,
-      content: chat.message
-    });
-    setChat(c => ({ ...c, message: '', thread: [...c.thread, res.data] }));
-  };
-
-  if (!user) return <div className="container">Please log in first.</div>;
-  if (user.role !== 'landlord') return <div className="container">Forbidden: Landlord access only.</div>;
 
   return (
-    <div className="container">
-      <h2 style={{ margin: '18px 0' }}>Landlord Dashboard</h2>
-      <p>Welcome, {user?.name || 'landlord'}.</p>
-
-      {/* Create property */}
-      <h3 style={{ margin: '14px 0' }}>Add a property</h3>
-      <form className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 14 }} onSubmit={createProperty}>
-        <input className="input" placeholder="Title" name="title" value={form.title} onChange={onChange} />
-        <input className="input" placeholder="Rent" name="rent" value={form.rent} onChange={onChange} />
-        <input className="input" placeholder="Address" name="address" value={form.address} onChange={onChange} />
-        <input className="input" placeholder="City" name="city" value={form.city} onChange={onChange} />
-        <input className="input" placeholder="State" name="state" value={form.state} onChange={onChange} />
-        <input className="input" placeholder="Country" name="country" value={form.country} onChange={onChange} />
-        <input className="input" placeholder="Bedrooms" name="bedrooms" value={form.bedrooms} onChange={onChange} />
-        <input className="input" placeholder="Bathrooms" name="bathrooms" value={form.bathrooms} onChange={onChange} />
-        <input className="input" type="file" onChange={handleFileChange} />
-        <input className="input" placeholder="Amenities (comma separated)" name="amenities" value={form.amenities} onChange={onChange} style={{ gridColumn: '1/-1' }} />
-        <textarea className="input" placeholder="Description" name="description" value={form.description} onChange={onChange} style={{ gridColumn: '1/-1', height: 100 }} />
-        <button className="btn" disabled={saving} style={{ gridColumn: '1/-1' }}>{saving ? 'Saving…' : 'Create Property'}</button>
-      </form>
-
-      {/* My properties */}
-      <h3 style={{ margin: '18px 0' }}>My Properties</h3>
-      <div className="grid cards">
-        {mine.length === 0 && <p>No properties yet.</p>}
-        {mine.map(p => (
-          <div className="card" key={p._id}>
-            <div className="card-body">
-              <div className="card-title">{p.title}</div>
-              <div className="card-meta">{p.city}, {p.state}</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                <button className="btn secondary" onClick={() => updateProperty(p)}>Edit title</button>
-                <button className="btn" onClick={() => deleteProperty(p)}>Delete</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Incoming bookings */}
-      <h3 style={{ margin: '18px 0' }}>Incoming Booking Requests</h3>
-      <div className="grid cards">
-        {incoming.length === 0 && <p>No booking requests yet.</p>}
-        {incoming.map(b => (
-          <div className="card" key={b._id}>
-            <div className="card-body">
-              <div className="card-title">{b.property?.title}</div>
-              <div className="card-meta">Tenant: {b.tenant?.name} • {b.tenant?.email}</div>
-              <div className="card-meta">Viewing: {new Date(b.scheduledAt).toLocaleString()}</div>
-              <div className="card-meta">Status: <b>{b.status}</b></div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                <button className="btn" onClick={() => setStatus(b, 'approved')}>Approve</button>
-                <button className="btn secondary" onClick={() => setStatus(b, 'rejected')}>Reject</button>
-                <button className="btn secondary" onClick={() => openThread(b.property._id, b.tenant._id)}>Message</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Messaging */}
-      {chat.propertyId && (
-        <div style={{ marginTop: 18 }}>
-          <h3>Messages</h3>
-          <div className="card" style={{ padding: 12 }}>
-            <div style={{ maxHeight: 220, overflow: 'auto', marginBottom: 10 }}>
-              {chat.thread.map(m => (
-                <div key={m._id} style={{ margin: '6px 0' }}>
-                  <b>{String(m.sender) === user._id ? 'Me' : 'Tenant'}:</b> {m.content}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                className="input"
-                placeholder="Type a message"
-                value={chat.message}
-                onChange={e => setChat(c => ({ ...c, message: e.target.value }))}
-              />
-              <button className="btn" onClick={sendMessage}>Send</button>
-            </div>
-          </div>
+    <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
+      {/* Header */}
+      <div className="dashboard-header">
+        <div>
+          <span className="section-kicker">Landlord Portal</span>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 800 }}>Welcome, {user?.name || 'Landlord'}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Manage listings, review tour requests, and screen rental applicants
+          </p>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="dashboard-tabs">
+        <button
+          className={`dashboard-tab ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          📊 Overview
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'properties' ? 'active' : ''}`}
+          onClick={() => setActiveTab('properties')}
+        >
+          🏢 My Listings ({properties.length})
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'bookings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bookings')}
+        >
+          📅 Tour Requests ({incomingBookings.length})
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'applications' ? 'active' : ''}`}
+          onClick={() => setActiveTab('applications')}
+        >
+          📝 Applications ({applications.length})
+        </button>
+        <button
+          className={`dashboard-tab ${activeTab === 'profile' ? 'active' : ''}`}
+          onClick={() => setActiveTab('profile')}
+        >
+          ⚙️ Profile
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === 'overview' && (
+        <LandlordOverview
+          properties={properties}
+          bookings={incomingBookings}
+          applications={applications}
+          onNavigateTab={(tab) => setActiveTab(tab)}
+          onAddProperty={handleOpenAddProperty}
+        />
+      )}
+
+      {activeTab === 'properties' && (
+        <LandlordProperties
+          properties={properties}
+          loading={loading}
+          onAddProperty={handleOpenAddProperty}
+          onEditProperty={handleOpenEditProperty}
+          onRefresh={loadData}
+        />
+      )}
+
+      {activeTab === 'bookings' && (
+        <LandlordBookings
+          bookings={incomingBookings}
+          loading={loading}
+          onRefresh={loadData}
+          onOpenChat={handleOpenChat}
+        />
+      )}
+
+      {activeTab === 'applications' && (
+        <LandlordApplications
+          applications={applications}
+          loading={loading}
+          onRefresh={loadData}
+          onOpenChat={handleOpenChat}
+        />
+      )}
+
+      {activeTab === 'profile' && (
+        <LandlordProfile user={user} onProfileUpdated={loadData} />
+      )}
+
+      {/* Property Form Modal (Add / Edit) */}
+      <PropertyFormModal
+        isOpen={propertyModalOpen}
+        onClose={() => setPropertyModalOpen(false)}
+        initialProperty={editingProperty}
+        onSuccess={loadData}
+      />
+
+      {/* Chat Modal */}
+      {chatInfo && (
+        <ChatBox
+          propertyId={chatInfo.propertyId}
+          withUserId={chatInfo.withUserId}
+          peerName={chatInfo.peerName || 'Tenant'}
+          onClose={() => setChatInfo(null)}
+        />
       )}
     </div>
   );

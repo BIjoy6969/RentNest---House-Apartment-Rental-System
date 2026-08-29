@@ -1,159 +1,393 @@
 // src/pages/AdminPanel.js
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
-
-function Section({ title, children }) {
-  return (
-    <div style={{margin:'18px 0'}}>
-      <h3 style={{marginBottom:10}}>{title}</h3>
-      {children}
-    </div>
-  );
-}
+import { useToast } from '../context/ToastContext';
+import StatusBadge from '../components/common/StatusBadge';
+import Button from '../components/common/Button';
+import EmptyState from '../components/common/EmptyState';
+import { getImageUrl, DEFAULT_FALLBACK } from '../utils/imageUrl';
 
 export default function AdminPanel() {
-  const [tab, setTab] = useState('users'); // users | properties | complaints
-  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
 
+  const [stats, setStats] = useState({ users: 0, properties: 0, bookings: 0, applications: 0, complaints: 0 });
   const [users, setUsers] = useState([]);
-  const [props, setProps] = useState([]);
+  const [properties, setProperties] = useState([]);
   const [complaints, setComplaints] = useState([]);
 
-  const loadUsers = async () => {
-    setLoading(true);
+  /* --------------- Data Loading --------------- */
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/stats');
+      setStats(res.data || {});
+    } catch { /* ignore if endpoint missing */ }
+  }, []);
+
+  const loadUsers = useCallback(async () => {
     try {
       const res = await api.get('/admin/users');
       setUsers(res.data || []);
-    } finally { setLoading(false); }
-  };
-  const loadProps = async () => {
-    setLoading(true);
+    } catch (e) { console.error(e); }
+  }, []);
+
+  const loadProperties = useCallback(async () => {
     try {
       const res = await api.get('/admin/properties');
-      setProps(res.data || []);
-    } finally { setLoading(false); }
-  };
-  const loadComplaints = async () => {
-    setLoading(true);
+      setProperties(res.data || []);
+    } catch (e) { console.error(e); }
+  }, []);
+
+  const loadComplaints = useCallback(async () => {
     try {
       const res = await api.get('/admin/complaints');
       setComplaints(res.data || []);
-    } finally { setLoading(false); }
-  };
+    } catch (e) { console.error(e); }
+  }, []);
 
   useEffect(() => {
-    if (tab === 'users') loadUsers();
-    if (tab === 'properties') loadProps();
-    if (tab === 'complaints') loadComplaints();
-    // eslint-disable-next-line
-  }, [tab]);
+    setLoading(true);
+    const loadForTab = async () => {
+      switch (activeTab) {
+        case 'overview': await loadStats(); break;
+        case 'users': await loadUsers(); break;
+        case 'properties': await loadProperties(); break;
+        case 'complaints': await loadComplaints(); break;
+        default: break;
+      }
+      setLoading(false);
+    };
+    loadForTab();
+  }, [activeTab, loadStats, loadUsers, loadProperties, loadComplaints]);
 
-  /* Users actions */
-  const deleteUser = async (id) => {
-    if (!window.confirm('Delete this user?')) return;
-    await api.delete(`/admin/users/${id}`);
-    await loadUsers();
-  };
-  const changeRole = async (u) => {
-    const newRole = prompt('Enter role (tenant / landlord / admin):', u.role);
-    if (!newRole) return;
-    const name = prompt('Enter name:', u.name);
-    if (!name) return;
-    const email = prompt('Enter email:', u.email);
-    if (!email) return;
-    await api.put(`/admin/users/${u._id}`, { name, email, role: newRole });
-    await loadUsers();
-  };
-
-  /* Properties actions */
-  const flag = async (p) => { await api.patch(`/admin/properties/${p._id}/flag`); await loadProps(); };
-  const unflag = async (p) => { await api.patch(`/admin/properties/${p._id}/unflag`); await loadProps(); };
-  const delProp = async (p) => {
-    if (!window.confirm('Delete this property?')) return;
-    await api.delete(`/admin/properties/${p._id}`);
-    await loadProps();
+  /* --------------- User Actions --------------- */
+  const handleDeleteUser = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete user "${name}"? This action cannot be undone.`)) return;
+    try {
+      await api.delete(`/admin/users/${id}`);
+      toast.success(`User "${name}" deleted`);
+      loadUsers();
+    } catch {
+      toast.error('Failed to delete user');
+    }
   };
 
-  /* Complaints actions */
-  const setComplaintStatus = async (c, status) => {
-    await api.patch(`/admin/complaints/${c._id}/status`, { status });
-    await loadComplaints();
+  const handleEditUser = async (u) => {
+    const newRole = prompt('Enter new role (tenant / landlord / admin):', u.role);
+    if (!newRole || !['tenant', 'landlord', 'admin'].includes(newRole)) {
+      if (newRole) toast.error('Invalid role. Use tenant, landlord, or admin.');
+      return;
+    }
+    const newName = prompt('Enter name:', u.name);
+    if (!newName) return;
+    const newEmail = prompt('Enter email:', u.email);
+    if (!newEmail) return;
+
+    try {
+      await api.put(`/admin/users/${u._id}`, { name: newName, email: newEmail, role: newRole });
+      toast.success('User updated successfully');
+      loadUsers();
+    } catch {
+      toast.error('Failed to update user');
+    }
   };
 
+  /* --------------- Property Actions --------------- */
+  const handleFlagProperty = async (p) => {
+    try {
+      await api.patch(`/admin/properties/${p._id}/flag`);
+      toast.success(`"${p.title}" has been flagged for review`);
+      loadProperties();
+    } catch {
+      toast.error('Failed to flag property');
+    }
+  };
+
+  const handleUnflagProperty = async (p) => {
+    try {
+      await api.patch(`/admin/properties/${p._id}/unflag`);
+      toast.success(`"${p.title}" flag removed`);
+      loadProperties();
+    } catch {
+      toast.error('Failed to unflag property');
+    }
+  };
+
+  const handleDeleteProperty = async (p) => {
+    if (!window.confirm(`Delete property "${p.title}"? This is permanent.`)) return;
+    try {
+      await api.delete(`/admin/properties/${p._id}`);
+      toast.success('Property deleted');
+      loadProperties();
+    } catch {
+      toast.error('Failed to delete property');
+    }
+  };
+
+  /* --------------- Complaint Actions --------------- */
+  const handleComplaintStatus = async (c, status) => {
+    try {
+      await api.patch(`/admin/complaints/${c._id}/status`, { status });
+      toast.success(`Complaint marked as ${status}`);
+      loadComplaints();
+    } catch {
+      toast.error('Failed to update complaint');
+    }
+  };
+
+  /* --------------- Render --------------- */
   return (
-    <div className="container">
-      <h2 style={{margin:'18px 0'}}>Admin Panel</h2>
-
-      <div style={{display:'flex', gap:8, marginBottom:12}}>
-        <button className={`btn ${tab==='users'?'':'secondary'}`} onClick={()=>setTab('users')}>Users</button>
-        <button className={`btn ${tab==='properties'?'':'secondary'}`} onClick={()=>setTab('properties')}>Properties</button>
-        <button className={`btn ${tab==='complaints'?'':'secondary'}`} onClick={()=>setTab('complaints')}>Complaints</button>
+    <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
+      {/* Header */}
+      <div className="dashboard-header">
+        <div>
+          <span className="section-kicker">Administrator</span>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 800 }}>Admin Control Panel</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Manage users, moderate listings, and resolve platform complaints
+          </p>
+        </div>
       </div>
 
-      {loading ? <p>Loading…</p> : (
+      {/* Tabs */}
+      <div className="dashboard-tabs">
+        {['overview', 'users', 'properties', 'complaints'].map((tab) => (
+          <button
+            key={tab}
+            className={`dashboard-tab ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === 'overview' && '📊 Overview'}
+            {tab === 'users' && `👥 Users (${users.length || '…'})`}
+            {tab === 'properties' && `🏢 Properties (${properties.length || '…'})`}
+            {tab === 'complaints' && `⚠️ Complaints (${complaints.length || '…'})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {loading ? (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Loading data…
+        </div>
+      ) : (
         <>
-          {tab === 'users' && (
-            <Section title="All Users">
-              <div className="grid cards">
-                {users.map(u => (
-                  <div key={u._id} className="card">
-                    <div className="card-body">
-                      <div className="card-title">{u.name}</div>
-                      <div className="card-meta">{u.email}</div>
-                      <div className="card-meta">Role: <b>{u.role}</b></div>
-                      <div style={{display:'flex', gap:8, marginTop:10}}>
-                        <button className="btn" onClick={()=>changeRole(u)}>Edit / Change role</button>
-                        <button className="btn secondary" onClick={()=>deleteUser(u._id)}>Delete</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          {/* ====== OVERVIEW TAB ====== */}
+          {activeTab === 'overview' && (
+            <div>
+              <div className="stat-grid">
+                <div className="stat-card" onClick={() => setActiveTab('users')} style={{ cursor: 'pointer' }}>
+                  <div className="stat-value">{stats.users || 0}</div>
+                  <div className="stat-label">Registered Users</div>
+                </div>
+                <div className="stat-card" onClick={() => setActiveTab('properties')} style={{ cursor: 'pointer' }}>
+                  <div className="stat-value">{stats.properties || 0}</div>
+                  <div className="stat-label">Listed Properties</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.bookings || 0}</div>
+                  <div className="stat-label">Total Bookings</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{stats.applications || 0}</div>
+                  <div className="stat-label">Rental Applications</div>
+                </div>
+                <div className="stat-card" onClick={() => setActiveTab('complaints')} style={{ cursor: 'pointer' }}>
+                  <div className="stat-value">{stats.complaints || 0}</div>
+                  <div className="stat-label">Open Complaints</div>
+                </div>
               </div>
-            </Section>
+
+              <div className="rn-card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                  Click any stat card above to drill into management details, or use the tabs to navigate directly.
+                </p>
+              </div>
+            </div>
           )}
 
-          {tab === 'properties' && (
-            <Section title="All Properties">
-              <div className="grid cards">
-                {props.map(p => (
-                  <div key={p._id} className="card">
-                    <div className="card-body">
-                      <div className="card-title">{p.title}</div>
-                      <div className="card-meta">{[p.address, p.city, p.state, p.country].filter(Boolean).join(', ')}</div>
-                      <div className="card-meta">Rent: {p.rent} • Owner: {p.owner?.name} ({p.owner?.email})</div>
-                      <div className="card-meta">Flagged: <b>{p.isFlagged ? 'Yes' : 'No'}</b></div>
-                      <div style={{display:'flex', gap:8, marginTop:10}}>
-                        {!p.isFlagged
-                          ? <button className="btn" onClick={()=>flag(p)}>Flag</button>
-                          : <button className="btn" onClick={()=>unflag(p)}>Unflag</button>}
-                        <button className="btn secondary" onClick={()=>delProp(p)}>Delete</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
+          {/* ====== USERS TAB ====== */}
+          {activeTab === 'users' && (
+            <div>
+              {users.length === 0 ? (
+                <EmptyState icon="👥" title="No Users Found" description="No registered users in the system." />
+              ) : (
+                <div className="table-container">
+                  <table className="rn-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((u) => (
+                        <tr key={u._id}>
+                          <td style={{ fontWeight: 600 }}>{u.name}</td>
+                          <td>{u.email}</td>
+                          <td>
+                            <StatusBadge
+                              status={u.role === 'admin' ? 'flagged' : u.role === 'landlord' ? 'primary' : 'active'}
+                              label={u.role.toUpperCase()}
+                            />
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <Button variant="outline" size="sm" onClick={() => handleEditUser(u)}>
+                                ✏️ Edit
+                              </Button>
+                              <Button variant="danger" size="sm" onClick={() => handleDeleteUser(u._id, u.name)}>
+                                Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           )}
 
-          {tab === 'complaints' && (
-            <Section title="Complaints">
-              <div className="grid cards">
-                {complaints.map(c => (
-                  <div key={c._id} className="card">
-                    <div className="card-body">
-                      <div className="card-title">{c.targetType} • {c.status.toUpperCase()}</div>
-                      <div className="card-meta">Reason: {c.reason}</div>
-                      <div className="card-meta">Reporter: {c.reporter?.name} ({c.reporter?.email})</div>
-                      <div style={{display:'flex', gap:8, marginTop:10}}>
-                        <button className="btn" onClick={()=>setComplaintStatus(c, 'resolved')}>Mark resolved</button>
-                        <button className="btn secondary" onClick={()=>setComplaintStatus(c, 'dismissed')}>Dismiss</button>
-                        <button className="btn secondary" onClick={()=>setComplaintStatus(c, 'open')}>Reopen</button>
+          {/* ====== PROPERTIES TAB ====== */}
+          {activeTab === 'properties' && (
+            <div>
+              {properties.length === 0 ? (
+                <EmptyState icon="🏢" title="No Properties" description="No properties have been listed on the platform yet." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {properties.map((p) => (
+                    <div
+                      key={p._id}
+                      className="rn-card"
+                      style={{
+                        padding: '1.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '1.5rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <img
+                          src={getImageUrl(p.primaryImage || p.imageUrl || (p.images && p.images[0]?.url))}
+                          alt={p.title}
+                          style={{ width: '100px', height: '70px', objectFit: 'cover', borderRadius: 'var(--radius-md)' }}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = DEFAULT_FALLBACK;
+                          }}
+                        />
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem' }}>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{p.title}</h4>
+                            <StatusBadge status={p.isActive ? 'active' : 'inactive'} label={p.isActive ? 'Active' : 'Inactive'} />
+                            {p.isFlagged && <StatusBadge status="flagged" label="Flagged" />}
+                          </div>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            📍 {[p.address, p.city, p.state].filter(Boolean).join(', ')} • ৳{Number(p.rent || 0).toLocaleString()} / mo
+                          </p>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            Owner: {p.owner?.name || 'Unknown'} ({p.owner?.email || '—'})
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {!p.isFlagged ? (
+                          <Button variant="secondary" size="sm" onClick={() => handleFlagProperty(p)}>
+                            🚩 Flag
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={() => handleUnflagProperty(p)}>
+                            ✓ Unflag
+                          </Button>
+                        )}
+                        <Button variant="danger" size="sm" onClick={() => handleDeleteProperty(p)}>
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ====== COMPLAINTS TAB ====== */}
+          {activeTab === 'complaints' && (
+            <div>
+              {complaints.length === 0 ? (
+                <EmptyState icon="✅" title="No Complaints" description="No complaints have been filed yet. Your platform is running smoothly!" />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {complaints.map((c) => (
+                    <div
+                      key={c._id}
+                      className="rn-card"
+                      style={{
+                        padding: '1.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '1.5rem'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                            {c.targetType} Complaint
+                          </h4>
+                          <StatusBadge
+                            status={c.status === 'open' ? 'pending' : c.status === 'resolved' ? 'approved' : 'cancelled'}
+                            label={c.status?.toUpperCase()}
+                          />
+                        </div>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '0.3rem' }}>
+                          <b>Reason:</b> {c.reason}
+                        </p>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          Filed by: {c.reporter?.name || 'Unknown'} ({c.reporter?.email || '—'}) •{' '}
+                          {new Date(c.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleComplaintStatus(c, 'resolved')}
+                        >
+                          ✓ Resolve
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleComplaintStatus(c, 'dismissed')}
+                        >
+                          Dismiss
+                        </Button>
+                        {c.status !== 'open' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleComplaintStatus(c, 'open')}
+                          >
+                            Reopen
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </>
       )}

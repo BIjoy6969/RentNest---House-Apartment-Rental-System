@@ -1,7 +1,10 @@
-const router = require('express').Router();
+// src/routes/complaintRoutes.js
+const express = require('express');
+const router = express.Router();
+const complaintController = require('../controllers/complaintController');
 const auth = require('../middleware/auth');
-const ctrl = require('../controllers/complaintController');
 
-router.post('/', auth, ctrl.create);
+router.post('/', auth, complaintController.create);
+router.get('/mine', auth, complaintController.mine);
 
 module.exports = router;

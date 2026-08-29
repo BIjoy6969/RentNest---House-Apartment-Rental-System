@@ -1,9 +1,10 @@
-const router = require('express').Router();
+// src/routes/userRoutes.js
+const express = require('express');
+const router = express.Router();
+const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
-const ctrl = require('../controllers/userController');
 
-router.post('/favorites', auth, ctrl.addFavorite);
-router.delete('/favorites', auth, ctrl.removeFavorite);
-router.get('/favorites', auth, ctrl.myFavorites);
+router.get('/profile', auth, userController.getProfile);
+router.put('/profile', auth, userController.updateProfile);
 
 module.exports = router;

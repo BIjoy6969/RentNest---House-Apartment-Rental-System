@@ -3,13 +3,14 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 
 dotenv.config();
 
 const app = express();
 
-/* ---------- CORS ---------- */
+/* ---------- CORS Configuration ---------- */
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .split(',')
   .map(s => s.trim())
@@ -28,16 +29,26 @@ app.use(
       }
       return cb(new Error(`CORS blocked: ${origin}`));
     },
-    credentials: false, // we use Bearer tokens, not cookies
+    credentials: false
   })
 );
+
+/* ---------- Rate Limiting for Security ---------- */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many authentication attempts. Please try again later.' }
+});
 
 /* ---------- Body parsing ---------- */
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-/* ---------- Static uploads ---------- */
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+/* ---------- Static uploads serving ---------- */
+const uploadDir = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 /* ---------- Database connection middleware ---------- */
@@ -51,37 +62,44 @@ app.use(async (req, res, next) => {
   }
 });
 
-/* ---------- Health ---------- */
-app.get('/', (_req, res) => res.json({ ok: true, name: 'RentNest API' }));
-app.get('/api/health', (_req, res) => res.json({ ok: true, name: 'RentNest API' }));
+/* ---------- Health check ---------- */
+app.get('/', (_req, res) => res.json({ ok: true, name: 'RentNest API', version: '2.1.0' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, name: 'RentNest API', status: 'healthy' }));
 
-/* ---------- Routes ---------- */
-app.use('/api/auth', require('./routes/authRoutes'));
+/* ---------- API Routes ---------- */
+app.use('/api/auth', authLimiter, require('./routes/authRoutes'));
 app.use('/api/properties', require('./routes/propertyRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/applications', require('./routes/applicationRoutes'));
 app.use('/api/favorites', require('./routes/favoriteRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/complaints', require('./routes/complaintRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
 
-/* ---------- 404 ---------- */
+/* ---------- 404 handler ---------- */
 app.use((req, res) => {
-  res.status(404).json({ message: 'Not found' });
+  res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl} - Endpoint not found` });
 });
 
-/* ---------- Global error handler ---------- */
+/* ---------- Global error handler (Safe production responses) ---------- */
 app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ message: err.message || 'Server error' });
+  console.error('Server error:', err);
+  const status = err.status || (err.name === 'ValidationError' ? 400 : 500);
+  res.status(status).json({
+    message: err.message || 'Internal server error'
+  });
 });
 
-/* ---------- Start server if run directly ---------- */
+/* ---------- Start server ---------- */
 const PORT = process.env.PORT || 5000;
 
 if (require.main === module || !process.env.VERCEL) {
   connectDB()
     .then(() => {
       app.listen(PORT, () => {
-        console.log(`API running on http://localhost:${PORT}`);
+        console.log(`RentNest API running on http://localhost:${PORT}`);
       });
     })
     .catch((e) => {

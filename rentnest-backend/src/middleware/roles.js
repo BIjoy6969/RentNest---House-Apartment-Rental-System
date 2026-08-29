@@ -1,26 +1,21 @@
-const { ADMIN } = require('../constants/roles');
+// src/middleware/roles.js
 
-function requireRole(...allowed) {
+function requireRole(...allowedRoles) {
+  // Flatten in case an array was passed
+  const roles = allowedRoles.flat();
+
   return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ ok: false, message: 'Unauthorized' });
-    if (!allowed.includes(req.user.role)) {
-      return res.status(403).json({ ok: false, message: 'Forbidden' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
+    }
+
     next();
   };
 }
 
-function isOwnerOrAdmin(getResourceOwnerId) {
-  return async (req, res, next) => {
-    try {
-      const ownerId = await getResourceOwnerId(req);
-      if (!ownerId) return res.status(404).json({ ok: false, message: 'Resource not found' });
-      if (req.user.role === ADMIN || String(req.user._id) === String(ownerId)) return next();
-      return res.status(403).json({ ok: false, message: 'Forbidden' });
-    } catch (e) {
-      next(e);
-    }
-  };
-}
-
-module.exports = { requireRole, isOwnerOrAdmin };
+module.exports = { requireRole };
+module.exports.requireRole = requireRole;
