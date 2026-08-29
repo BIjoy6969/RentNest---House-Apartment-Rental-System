@@ -42,7 +42,7 @@ export default function RegisterPage() {
         nav('/tenant', { replace: true });
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Registration failed. This email may already be in use.';
+      const msg = err?.response?.data?.message || (err?.response?.status === 500 ? 'Server connection error. Please try again in a moment.' : 'Registration failed. Please check your details.');
       setRegisterError(msg);
       toast.error(msg);
     } finally {
