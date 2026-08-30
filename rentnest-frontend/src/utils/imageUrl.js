@@ -14,8 +14,14 @@ export function getImageUrl(pathOrUrl) {
   }
 
   // Determine backend host from REACT_APP_API_URL or window.location
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-  const backendBase = apiUrl.replace(/\/api\/?$/, '');
+  let backendBase = '';
+  if (process.env.REACT_APP_API_URL) {
+    backendBase = process.env.REACT_APP_API_URL.replace(/\/api\/?$/, '');
+  } else if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    backendBase = '';
+  } else {
+    backendBase = 'http://localhost:5000';
+  }
 
   const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   return `${backendBase}${cleanPath}`;
