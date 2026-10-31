@@ -122,8 +122,8 @@ graph LR
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New Project"** -> **"Import Git Repository"**.
 2. Select `BIjoy6969/RentNest---House-Apartment-Rental-System`.
 3. Set the following **Environment Variables** in Vercel settings:
-   - `MONGO_URI`: `mongodb+srv://RentNest:RentNest1202@cluster0.1n9t8wj.mongodb.net/rentnest?retryWrites=true&w=majority&appName=Cluster0`
-   - `JWT_SECRET`: `superlongrandomsecretstring`
+   - `MONGO_URI`: `<your MongoDB Atlas connection string>`
+   - `JWT_SECRET`: `<your long, random secret>`
    - `JWT_EXPIRES_IN`: `7d`
    - `REACT_APP_API_URL`: `/api` (or your full backend URL)
 4. Click **Deploy**. Vercel uses the included `vercel.json` to deploy both frontend and backend seamlessly!
